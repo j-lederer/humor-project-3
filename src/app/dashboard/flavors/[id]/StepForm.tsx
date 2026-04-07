@@ -28,6 +28,10 @@ export default function StepForm({ mode, step, flavorId, models, nextOrder, onCl
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form.description || !form.llm_model_id || !form.llm_system_prompt || !form.llm_user_prompt) {
+      alert("Please fill in all required fields: Description, Model, System Prompt, and User Prompt.");
+      return;
+    }
     setLoading(true);
 
     const { data: { user } } = await supabase.auth.getUser();
@@ -73,6 +77,7 @@ export default function StepForm({ mode, step, flavorId, models, nextOrder, onCl
             value={form.description}
             onChange={(e) => set("description", e.target.value)}
             placeholder="What does this step do?"
+            required
             className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 focus:outline-none focus:border-blue-500"
           />
         </div>
@@ -84,7 +89,7 @@ export default function StepForm({ mode, step, flavorId, models, nextOrder, onCl
               onChange={(e) => set("llm_model_id", e.target.value)}
               className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 focus:outline-none focus:border-blue-500"
             >
-              <option value="">Select model</option>
+              <option value="" disabled>Select model</option>
               {models.map((m) => (
                 <option key={m.id as number} value={m.id as number}>
                   {m.name as string}
@@ -114,6 +119,7 @@ export default function StepForm({ mode, step, flavorId, models, nextOrder, onCl
           onChange={(e) => set("llm_system_prompt", e.target.value)}
           rows={3}
           placeholder="System prompt for this step..."
+          required
           className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 focus:outline-none focus:border-blue-500 font-mono"
         />
       </div>
@@ -125,6 +131,7 @@ export default function StepForm({ mode, step, flavorId, models, nextOrder, onCl
           onChange={(e) => set("llm_user_prompt", e.target.value)}
           rows={3}
           placeholder="User prompt for this step..."
+          required
           className="w-full px-3 py-1.5 text-sm rounded-lg border border-gray-300 dark:border-slate-600 bg-white dark:bg-slate-700 focus:outline-none focus:border-blue-500 font-mono"
         />
       </div>
