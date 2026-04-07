@@ -35,11 +35,21 @@ export async function POST(req: NextRequest) {
       }),
     });
 
-    const data = await res.json();
+    const text = await res.text();
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      return NextResponse.json(
+        { error: `API returned non-JSON (${res.status}): ${text.slice(0, 500)}` },
+        { status: 502 }
+      );
+    }
 
     if (!res.ok) {
       return NextResponse.json(
-        { error: data.error || data.message || `API returned ${res.status}` },
+        { error: data.error || data.message || data.detail || `API returned ${res.status}: ${text.slice(0, 500)}` },
         { status: res.status }
       );
     }
@@ -52,7 +62,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err) {
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Failed to call API" },
+      { error: err instanceof Error ? `${err.name}: ${err.message}` : "Failed to call API" },
       { status: 500 }
     );
   }
