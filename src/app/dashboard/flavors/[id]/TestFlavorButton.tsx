@@ -43,23 +43,21 @@ export default function TestFlavorButton({ flavorId }: TestFlavorButtonProps) {
       });
 
       const text = await res.text();
-      let data;
-      try {
-        data = JSON.parse(text);
-      } catch {
-        setError(`Server returned non-JSON (${res.status}): ${text.slice(0, 300)}`);
+
+      if (!res.ok) {
+        setError(`Error ${res.status}: ${text.slice(0, 500) || "No response body"}`);
         setLoading(false);
         return;
       }
 
-      if (!res.ok) {
-        setError(data.error || data.message || `Error ${res.status}: ${JSON.stringify(data).slice(0, 300)}`);
-      } else {
-        const caps = data.captions || [];
-        setResults(caps.map((c: Record<string, unknown>) => typeof c === "string" ? c : (c.content as string) || JSON.stringify(c)));
-      }
+      const data = JSON.parse(text);
+      const caps = data.captions || [];
+      const extracted = caps.map((c: Record<string, unknown>) =>
+        typeof c === "string" ? c : (c.content as string) || JSON.stringify(c)
+      );
+      setResults(extracted.length > 0 ? extracted : ["No captions returned"]);
     } catch (err) {
-      setError(err instanceof Error ? `${err.name}: ${err.message}` : `Unknown error: ${String(err)}`);
+      setError(`Request failed: ${err instanceof Error ? err.message : String(err)}`);
     }
 
     setLoading(false);
