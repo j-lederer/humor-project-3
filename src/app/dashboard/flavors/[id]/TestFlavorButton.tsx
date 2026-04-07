@@ -36,22 +36,36 @@ export default function TestFlavorButton({ flavorId }: TestFlavorButtonProps) {
     setResults([]);
 
     try {
-      const res = await fetch("/api/test-flavor", {
+      // Get the session token directly from the browser client
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setError("Not authenticated. Please sign in again.");
+        setLoading(false);
+        return;
+      }
+
+      const res = await fetch("https://api.almostcrackd.ai/pipeline/generate-captions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ humor_flavor_id: flavorId, image_id: selectedImageId }),
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          imageId: selectedImageId,
+          humorFlavorId: flavorId,
+        }),
       });
 
       const text = await res.text();
 
       if (!res.ok) {
-        setError(`Error ${res.status}: ${text.slice(0, 500) || "No response body"}`);
+        setError(`API error ${res.status}: ${text.slice(0, 500) || "No details"}`);
         setLoading(false);
         return;
       }
 
       const data = JSON.parse(text);
-      const caps = data.captions || [];
+      const caps = Array.isArray(data) ? data : data.captions || data.caption || [data];
       const extracted = caps.map((c: Record<string, unknown>) =>
         typeof c === "string" ? c : (c.content as string) || JSON.stringify(c)
       );
@@ -94,7 +108,7 @@ export default function TestFlavorButton({ flavorId }: TestFlavorButtonProps) {
             </div>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-100 dark:bg-red-500/20 border border-red-400 rounded-lg text-red-700 dark:text-red-300 text-sm">
+              <div className="mb-4 p-3 bg-red-100 dark:bg-red-500/20 border border-red-400 rounded-lg text-red-700 dark:text-red-300 text-sm whitespace-pre-wrap break-words">
                 {error}
               </div>
             )}
