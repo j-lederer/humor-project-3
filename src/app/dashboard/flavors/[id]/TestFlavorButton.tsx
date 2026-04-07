@@ -59,7 +59,7 @@ export default function TestFlavorButton({ flavorId }: TestFlavorButtonProps) {
         setResults(data.captions || [data.caption || JSON.stringify(data)]);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Request failed");
+      setError(err instanceof Error ? `${err.name}: ${err.message}` : `Unknown error: ${String(err)}`);
     }
 
     setLoading(false);
