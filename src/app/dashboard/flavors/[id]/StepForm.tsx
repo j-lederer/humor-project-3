@@ -38,6 +38,9 @@ export default function StepForm({ mode, step, flavorId, models, nextOrder, onCl
       llm_user_prompt: form.llm_user_prompt || null,
       order_by: Number(form.order_by),
       humor_flavor_id: flavorId,
+      humor_flavor_step_type_id: 1,
+      llm_input_type_id: 1,
+      llm_output_type_id: 1,
     };
 
     if (mode === "create") {
