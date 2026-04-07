@@ -43,10 +43,18 @@ export default function TestFlavorButton({ flavorId }: TestFlavorButtonProps) {
         body: JSON.stringify({ humor_flavor_id: flavorId, image_id: selectedImageId }),
       });
 
-      const data = await res.json();
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        setError(`Server returned non-JSON (${res.status}): ${text.slice(0, 300)}`);
+        setLoading(false);
+        return;
+      }
 
       if (!res.ok) {
-        setError(data.error || "Failed to generate captions");
+        setError(data.error || data.message || `Error ${res.status}: ${JSON.stringify(data).slice(0, 300)}`);
       } else {
         setResults(data.captions || [data.caption || JSON.stringify(data)]);
       }
