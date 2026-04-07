@@ -37,25 +37,28 @@ export default function StepForm({ mode, step, flavorId, models, nextOrder, onCl
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    const payload = {
+    const editableFields = {
       description: form.description || null,
       llm_model_id: form.llm_model_id ? Number(form.llm_model_id) : null,
       llm_temperature: Number(form.llm_temperature),
       llm_system_prompt: form.llm_system_prompt || null,
       llm_user_prompt: form.llm_user_prompt || null,
       order_by: Number(form.order_by),
-      humor_flavor_id: flavorId,
-      humor_flavor_step_type_id: 1,
-      llm_input_type_id: 1,
-      llm_output_type_id: 1,
-      created_by_user_id: user.id,
       modified_by_user_id: user.id,
     };
 
     if (mode === "create") {
-      await supabase.from("humor_flavor_steps").insert(payload);
+      await supabase.from("humor_flavor_steps").insert({
+        ...editableFields,
+        humor_flavor_id: flavorId,
+        humor_flavor_step_type_id: 1,
+        llm_input_type_id: 1,
+        llm_output_type_id: 1,
+        created_by_user_id: user.id,
+      });
     } else {
-      await supabase.from("humor_flavor_steps").update(payload).eq("id", step!.id);
+      // Don't overwrite step_type, input_type, output_type on edit
+      await supabase.from("humor_flavor_steps").update(editableFields).eq("id", step!.id);
     }
 
     setLoading(false);
