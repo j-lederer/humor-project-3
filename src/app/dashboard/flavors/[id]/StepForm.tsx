@@ -30,6 +30,9 @@ export default function StepForm({ mode, step, flavorId, models, nextOrder, onCl
     e.preventDefault();
     setLoading(true);
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     const payload = {
       description: form.description || null,
       llm_model_id: form.llm_model_id ? Number(form.llm_model_id) : null,
@@ -41,6 +44,8 @@ export default function StepForm({ mode, step, flavorId, models, nextOrder, onCl
       humor_flavor_step_type_id: 1,
       llm_input_type_id: 1,
       llm_output_type_id: 1,
+      created_by_user_id: user.id,
+      modified_by_user_id: user.id,
     };
 
     if (mode === "create") {
