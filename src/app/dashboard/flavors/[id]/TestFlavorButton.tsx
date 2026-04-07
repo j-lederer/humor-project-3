@@ -21,7 +21,6 @@ export default function TestFlavorButton({ flavorId }: TestFlavorButtonProps) {
       supabase
         .from("images")
         .select("id, url, image_description")
-        .eq("is_common_use", true)
         .order("created_datetime_utc", { ascending: false })
         .limit(50)
         .then(({ data }) => {
@@ -56,7 +55,8 @@ export default function TestFlavorButton({ flavorId }: TestFlavorButtonProps) {
       if (!res.ok) {
         setError(data.error || data.message || `Error ${res.status}: ${JSON.stringify(data).slice(0, 300)}`);
       } else {
-        setResults(data.captions || [data.caption || JSON.stringify(data)]);
+        const caps = data.captions || [];
+        setResults(caps.map((c: Record<string, unknown>) => typeof c === "string" ? c : (c.content as string) || JSON.stringify(c)));
       }
     } catch (err) {
       setError(err instanceof Error ? `${err.name}: ${err.message}` : `Unknown error: ${String(err)}`);
