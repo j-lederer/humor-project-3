@@ -24,6 +24,95 @@ export default function FlavorDetail({ flavor, steps, models, captions }: Flavor
   const router = useRouter();
   const supabase = createClient();
 
+  const handleDuplicate = async () => {
+    const baseSlug = ((flavor.slug as string) || `flavor-${flavor.id}`).trim();
+    const requestedSlug = prompt("New unique flavor name", `${baseSlug}-copy`);
+
+    if (requestedSlug === null) return;
+
+    const newSlug = requestedSlug.trim();
+    if (!newSlug) {
+      alert("Please enter a name for the duplicated flavor.");
+      return;
+    }
+
+    setLoading(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      setLoading(false);
+      alert("Please sign in before duplicating a flavor.");
+      return;
+    }
+
+    const { data: existingFlavor, error: existingError } = await supabase
+      .from("humor_flavors")
+      .select("id")
+      .eq("slug", newSlug)
+      .maybeSingle();
+
+    if (existingError) {
+      setLoading(false);
+      alert(`Could not check the flavor name: ${existingError.message}`);
+      return;
+    }
+
+    if (existingFlavor) {
+      setLoading(false);
+      alert("That flavor name already exists. Choose a unique name for the duplicate.");
+      return;
+    }
+
+    const { data: newFlavor, error: flavorError } = await supabase
+      .from("humor_flavors")
+      .insert({
+        slug: newSlug,
+        description: (flavor.description as string | null) || null,
+        is_pinned: false,
+        created_by_user_id: user.id,
+        modified_by_user_id: user.id,
+      })
+      .select("id")
+      .single();
+
+    if (flavorError || !newFlavor) {
+      setLoading(false);
+      alert(`Could not duplicate the flavor: ${flavorError?.message || "No flavor was created."}`);
+      return;
+    }
+
+    if (steps.length > 0) {
+      const copiedSteps = steps.map((step) => ({
+        humor_flavor_id: newFlavor.id,
+        llm_temperature: step.llm_temperature ?? null,
+        order_by: step.order_by ?? null,
+        llm_input_type_id: step.llm_input_type_id ?? null,
+        llm_output_type_id: step.llm_output_type_id ?? null,
+        llm_model_id: step.llm_model_id ?? null,
+        humor_flavor_step_type_id: step.humor_flavor_step_type_id ?? null,
+        llm_system_prompt: step.llm_system_prompt ?? null,
+        llm_user_prompt: step.llm_user_prompt ?? null,
+        description: step.description ?? null,
+        created_by_user_id: user.id,
+        modified_by_user_id: user.id,
+      }));
+
+      const { error: stepsError } = await supabase.from("humor_flavor_steps").insert(copiedSteps);
+
+      if (stepsError) {
+        setLoading(false);
+        alert(`The flavor was created, but its steps were not copied: ${stepsError.message}`);
+        router.push(`/dashboard/flavors/${newFlavor.id}`);
+        router.refresh();
+        return;
+      }
+    }
+
+    setLoading(false);
+    router.push(`/dashboard/flavors/${newFlavor.id}`);
+    router.refresh();
+  };
+
   const handleUpdate = async () => {
     setLoading(true);
     await supabase.from("humor_flavors").update({
@@ -83,6 +172,9 @@ export default function FlavorDetail({ flavor, steps, models, captions }: Flavor
               Edit
             </button>
           )}
+          <button onClick={handleDuplicate} disabled={loading} className="px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-50">
+            Duplicate
+          </button>
           <button onClick={handleDelete} disabled={loading} className="px-3 py-2 text-sm text-red-600 dark:text-red-400 border border-red-300 dark:border-red-500/30 rounded-lg hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50">
             Delete
           </button>

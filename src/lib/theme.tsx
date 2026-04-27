@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useSyncExternalStore } from "react";
 
 type Theme = "light" | "dark" | "system";
 
@@ -8,6 +8,8 @@ const ThemeContext = createContext<{
   theme: Theme;
   setTheme: (t: Theme) => void;
 }>({ theme: "system", setTheme: () => {} });
+
+const themeChangeEvent = "themechange";
 
 export function useTheme() {
   return useContext(ThemeContext);
@@ -21,34 +23,49 @@ function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle("dark", isDark);
 }
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("system");
-  const [mounted, setMounted] = useState(false);
+function isTheme(value: string | null): value is Theme {
+  return value === "light" || value === "dark" || value === "system";
+}
 
-  useEffect(() => {
-    const stored = localStorage.getItem("theme") as Theme | null;
-    const initial = stored || "system";
-    setThemeState(initial);
-    applyTheme(initial);
-    setMounted(true);
+function getThemeSnapshot(): Theme {
+  if (typeof window === "undefined") return "system";
 
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const handler = () => {
-      if ((localStorage.getItem("theme") || "system") === "system") {
-        applyTheme("system");
-      }
-    };
-    mq.addEventListener("change", handler);
-    return () => mq.removeEventListener("change", handler);
-  }, []);
+  const stored = localStorage.getItem("theme");
+  return isTheme(stored) ? stored : "system";
+}
 
-  const setTheme = (t: Theme) => {
-    setThemeState(t);
-    localStorage.setItem("theme", t);
-    applyTheme(t);
+function subscribeToTheme(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener(themeChangeEvent, callback);
+
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const mediaHandler = () => {
+    if (getThemeSnapshot() === "system") {
+      callback();
+    }
   };
 
-  if (!mounted) return null;
+  mq.addEventListener("change", mediaHandler);
+
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(themeChangeEvent, callback);
+    mq.removeEventListener("change", mediaHandler);
+  };
+}
+
+export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const theme = useSyncExternalStore<Theme>(subscribeToTheme, getThemeSnapshot, () => "system");
+
+  useEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
+
+  const setTheme = (t: Theme) => {
+    localStorage.setItem("theme", t);
+    applyTheme(t);
+    window.dispatchEvent(new Event(themeChangeEvent));
+  };
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
